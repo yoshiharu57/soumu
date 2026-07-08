@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>業務日報・労務集計</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">労</div>
+          <div>
+            <p class="eyebrow">建設コンサルタント向け</p>
+            <h1>業務日報</h1>
+          </div>
+        </div>
+
+        <nav class="nav" aria-label="主要メニュー">
+          <button class="nav-button active" data-view="entry">
+            <span class="icon" aria-hidden="true">✎</span>
+            日報入力
+          </button>
+          <button class="nav-button" data-view="summary">
+            <span class="icon" aria-hidden="true">Σ</span>
+            月次集計
+          </button>
+          <button class="nav-button" data-view="master">
+            <span class="icon" aria-hidden="true">⚙</span>
+            マスタ管理
+          </button>
+          <button class="nav-button" data-view="data">
+            <span class="icon" aria-hidden="true">⇅</span>
+            データ入出力
+          </button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <label class="field-label" for="monthPicker">集計月</label>
+          <input id="monthPicker" class="input" type="month" />
+          <p id="storageHint" class="hint">入力内容はこのブラウザに保存されます。</p>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">総務課 労務管理</p>
+            <h2 id="viewTitle">日報入力</h2>
+          </div>
+          <div class="topbar-actions">
+            <button id="printButton" class="icon-button" type="button" title="印刷">
+              <span aria-hidden="true">⎙</span>
+            </button>
+            <button id="exportButton" class="button secondary" type="button">CSV出力</button>
+          </div>
+        </header>
+
+        <section class="stats-band" aria-label="月次サマリー">
+          <div class="metric">
+            <span class="metric-label">月間総時間</span>
+            <strong id="metricTotalHours">0.0h</strong>
+          </div>
+          <div class="metric">
+            <span class="metric-label">入力済み日報</span>
+            <strong id="metricEntryCount">0件</strong>
+          </div>
+          <div class="metric">
+            <span class="metric-label">稼働技術者</span>
+            <strong id="metricEmployeeCount">0人</strong>
+          </div>
+        </section>
+
+        <section id="entryView" class="view active" aria-labelledby="entryHeading">
+          <div class="section-heading">
+            <div>
+              <h3 id="entryHeading">日報を入力</h3>
+              <p>技術者ごとに、日付・業務・時間を登録します。</p>
+            </div>
+          </div>
+
+          <form id="entryForm" class="entry-grid">
+            <label class="field">
+              <span class="field-label">日付</span>
+              <input id="entryDate" class="input" type="date" required />
+            </label>
+            <label class="field">
+              <span class="field-label">技術者</span>
+              <select id="entryEmployee" class="input" required></select>
+            </label>
+            <label class="field">
+              <span class="field-label">業務</span>
+              <select id="entryProject" class="input" required></select>
+            </label>
+            <label class="field">
+              <span class="field-label">時間</span>
+              <input id="entryHours" class="input" type="number" min="0.5" step="0.5" value="1" required />
+            </label>
+            <div class="form-actions">
+              <button id="clearEditButton" class="button secondary hidden" type="button">編集を解除</button>
+              <button class="button primary" type="submit">登録</button>
+            </div>
+          </form>
+
+          <div class="table-toolbar">
+            <h3>選択月の日報一覧</h3>
+            <label class="search-field">
+              <span class="icon" aria-hidden="true">⌕</span>
+              <input id="entrySearch" type="search" placeholder="技術者・業務で検索" />
+            </label>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>日付</th>
+                  <th>技術者</th>
+                  <th>業務</th>
+                  <th class="num">時間</th>
+                  <th class="actions-col">操作</th>
+                </tr>
+              </thead>
+              <tbody id="entriesTable"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="summaryView" class="view" aria-labelledby="summaryHeading">
+          <div class="section-heading">
+            <div>
+              <h3 id="summaryHeading">月次集計</h3>
+              <p>業務別に、各技術者が何時間行ったかを自動集計します。</p>
+            </div>
+            <button id="copySummaryButton" class="button secondary" type="button">集計表をコピー</button>
+          </div>
+
+          <div class="summary-layout">
+            <div>
+              <h3>総括表</h3>
+              <div class="table-wrap summary-table-wrap">
+                <table id="summaryTable" class="summary-table"></table>
+              </div>
+            </div>
+            <div class="rank-panel">
+              <h3>業務別ランキング</h3>
+              <div id="taskRanking" class="ranking"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="masterView" class="view" aria-labelledby="masterHeading">
+          <div class="section-heading">
+            <div>
+              <h3 id="masterHeading">マスタ管理</h3>
+              <p>技術者名と業務名を追加・変更できます。</p>
+            </div>
+          </div>
+
+          <div class="master-grid">
+            <div>
+              <h3>技術者</h3>
+              <form id="employeeForm" class="inline-form">
+                <input id="employeeName" class="input" type="text" placeholder="技術者名を追加" required />
+                <button class="button primary" type="submit">追加</button>
+              </form>
+              <div id="employeeList" class="pill-list"></div>
+            </div>
+            <div>
+              <h3>業務</h3>
+              <form id="projectForm" class="inline-form">
+                <input id="projectName" class="input" type="text" placeholder="業務名を追加" required />
+                <button class="button primary" type="submit">追加</button>
+              </form>
+              <div id="projectList" class="pill-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="dataView" class="view" aria-labelledby="dataHeading">
+          <div class="section-heading">
+            <div>
+              <h3 id="dataHeading">データ入出力</h3>
+              <p>CSVでバックアップ、Excel用の転記、別PCへの移行ができます。</p>
+            </div>
+          </div>
+
+          <div class="data-actions">
+            <button id="downloadCsvButton" class="button primary" type="button">日報CSVを保存</button>
+            <label class="file-button">
+              CSVを読み込み
+              <input id="csvImport" type="file" accept=".csv,text/csv" />
+            </label>
+            <button id="resetSampleButton" class="button secondary" type="button">マスタを整理</button>
+            <button id="deleteAllButton" class="button danger" type="button">日報を全削除</button>
+          </div>
+
+          <div class="note-panel">
+            <h3>CSV項目</h3>
+            <p>date, employee, work, hours の順で出力します。Excelで開く場合はUTF-8対応のCSVとして読み込んでください。</p>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="./app.js"></script>
+  </body>
+</html>
