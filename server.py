@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
+import shutil
 import tempfile
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -52,10 +54,11 @@ def normalize_entries(entries: object) -> list[dict]:
         date = entry.get("date") if isinstance(entry.get("date"), str) else ""
         employee = entry.get("employee") if isinstance(entry.get("employee"), str) else ""
         project = entry.get("project") or entry.get("task") or ""
-        try:
-            hours = float(entry.get("hours", 0))
-        except (TypeError, ValueError):
-            continue
+        has_split_hours = any(key in entry for key in ("regularHours", "overtimeHours", "regular_hours", "overtime_hours"))
+        regular_value = entry.get("regularHours", entry.get("regular_hours", 0)) if has_split_hours else entry.get("hours", 0)
+        overtime_value = entry.get("overtimeHours", entry.get("overtime_hours", 0)) if has_split_hours else 0
+        regular_hours = to_non_negative_number(regular_value)
+        overtime_hours = to_non_negative_number(overtime_value)
         if date and employee and project:
             normalized.append(
                 {
@@ -63,10 +66,20 @@ def normalize_entries(entries: object) -> list[dict]:
                     "date": date,
                     "employee": employee,
                     "project": str(project),
-                    "hours": hours,
+                    "regularHours": regular_hours,
+                    "overtimeHours": overtime_hours,
+                    "hours": regular_hours + overtime_hours,
                 }
             )
     return normalized
+
+
+def to_non_negative_number(value: object) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return 0.0
+    return number if math.isfinite(number) and number >= 0 else 0.0
 
 
 def read_state() -> dict:
@@ -81,6 +94,7 @@ def read_state() -> dict:
 
 def write_state(state: dict) -> None:
     DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
+    backup_legacy_data_file()
     fd, temp_name = tempfile.mkstemp(prefix="data-", suffix=".json", dir=DATA_FILE.parent)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
@@ -89,6 +103,26 @@ def write_state(state: dict) -> None:
     finally:
         if os.path.exists(temp_name):
             os.unlink(temp_name)
+
+
+def backup_legacy_data_file() -> None:
+    backup_file = DATA_FILE.with_name(f"{DATA_FILE.name}.legacy.bak")
+    if not DATA_FILE.exists() or backup_file.exists():
+        return
+    try:
+        current = json.loads(DATA_FILE.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return
+    entries = current.get("entries") if isinstance(current, dict) else None
+    has_legacy_entries = isinstance(entries, list) and any(
+        isinstance(entry, dict)
+        and "hours" in entry
+        and "regularHours" not in entry
+        and "overtimeHours" not in entry
+        for entry in entries
+    )
+    if has_legacy_entries:
+        shutil.copy2(DATA_FILE, backup_file)
 
 
 class AppHandler(SimpleHTTPRequestHandler):
