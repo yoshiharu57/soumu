@@ -246,6 +246,13 @@ h3 {
   font-size: 28px;
 }
 
+.metric-detail {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .metric.warning strong {
   color: var(--warning);
 }
@@ -319,6 +326,21 @@ h3 {
 .form-actions {
   grid-column: span 6;
   justify-content: flex-end;
+}
+
+.form-help {
+  margin: -18px 0 26px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.overtime-hours,
+.overtime-row td:nth-child(n + 2) {
+  color: var(--warning);
+}
+
+.summary-table .overtime-row td {
+  border-bottom: 2px solid var(--line);
 }
 
 .daily-progress {

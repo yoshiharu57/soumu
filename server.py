@@ -53,7 +53,8 @@ def normalize_entries(entries: object) -> list[dict]:
         employee = entry.get("employee") if isinstance(entry.get("employee"), str) else ""
         project = entry.get("project") or entry.get("task") or ""
         try:
-            hours = float(entry.get("hours", 0))
+            regular_hours = float(entry.get("regularHours", entry.get("regular_hours", entry.get("hours", 0))))
+            overtime_hours = float(entry.get("overtimeHours", entry.get("overtime_hours", 0)))
         except (TypeError, ValueError):
             continue
         if date and employee and project:
@@ -63,7 +64,9 @@ def normalize_entries(entries: object) -> list[dict]:
                     "date": date,
                     "employee": employee,
                     "project": str(project),
-                    "hours": hours,
+                    "regularHours": regular_hours,
+                    "overtimeHours": overtime_hours,
+                    "hours": regular_hours + overtime_hours,
                 }
             )
     return normalized
