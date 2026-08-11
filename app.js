@@ -15,7 +15,12 @@ const els = {
   entryDate: document.querySelector("#entryDate"),
   entryEmployee: document.querySelector("#entryEmployee"),
   entryProject: document.querySelector("#entryProject"),
-  entryHours: document.querySelector("#entryHours"),
+  entryRegularHours: document.querySelector("#entryRegularHours"),
+  entryOvertimeHours: document.querySelector("#entryOvertimeHours"),
+  dailyProgress: document.querySelector("#dailyProgress"),
+  dailyTotal: document.querySelector("#dailyTotal"),
+  dailyProgressBar: document.querySelector("#dailyProgressBar"),
+  dailyProgressMessage: document.querySelector("#dailyProgressMessage"),
   entriesTable: document.querySelector("#entriesTable"),
   entrySearch: document.querySelector("#entrySearch"),
   clearEditButton: document.querySelector("#clearEditButton"),
@@ -26,6 +31,7 @@ const els = {
   employeeList: document.querySelector("#employeeList"),
   toast: document.querySelector("#toast"),
   metricTotalHours: document.querySelector("#metricTotalHours"),
+  metricHoursBreakdown: document.querySelector("#metricHoursBreakdown"),
   metricEntryCount: document.querySelector("#metricEntryCount"),
   metricEmployeeCount: document.querySelector("#metricEmployeeCount"),
   copySummaryButton: document.querySelector("#copySummaryButton"),
@@ -80,11 +86,13 @@ function bindEvents() {
       date: els.entryDate.value,
       employee: els.entryEmployee.value,
       project: els.entryProject.value,
-      hours: Number(els.entryHours.value)
+      regularHours: Number(els.entryRegularHours.value || 0),
+      overtimeHours: Number(els.entryOvertimeHours.value || 0)
     };
+    entry.hours = entry.regularHours + entry.overtimeHours;
 
-    if (!entry.date || !entry.employee || !entry.project || !Number.isFinite(entry.hours) || entry.hours <= 0) {
-      showToast("日付・技術者・業務・時間を確認してください。");
+    if (!entry.date || !entry.employee || !entry.project || !Number.isFinite(entry.hours) || entry.hours <= 0 || entry.hours > 24) {
+      showToast("日付・技術者・業務と、合計24時間以内の定時・残業時間を確認してください。");
       return;
     }
 
@@ -100,7 +108,8 @@ function bindEvents() {
     els.clearEditButton.classList.add("hidden");
     els.entryForm.reset();
     els.entryDate.value = entry.date;
-    els.entryHours.value = 1;
+    els.entryRegularHours.value = 1;
+    els.entryOvertimeHours.value = 0;
     saveState();
     renderAll();
   });
@@ -110,10 +119,16 @@ function bindEvents() {
     els.clearEditButton.classList.add("hidden");
     els.entryForm.reset();
     els.entryDate.value = `${state.selectedMonth}-01`;
-    els.entryHours.value = 1;
+    els.entryRegularHours.value = 1;
+    els.entryOvertimeHours.value = 0;
+    renderDailyProgress();
   });
 
   els.entrySearch.addEventListener("input", renderEntries);
+  [els.entryDate, els.entryEmployee, els.entryRegularHours, els.entryOvertimeHours].forEach((control) => {
+    control.addEventListener("input", renderDailyProgress);
+    control.addEventListener("change", renderDailyProgress);
+  });
 
   els.employeeForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -201,8 +216,10 @@ function normalizeEntries(entries) {
       date: entry.date || "",
       employee: entry.employee || "",
       project: entry.project || entry.task || "",
-      hours: Number(entry.hours || 0)
+      regularHours: Number(entry.regularHours ?? entry.regular_hours ?? entry.hours ?? 0),
+      overtimeHours: Number(entry.overtimeHours ?? entry.overtime_hours ?? 0)
     }))
+    .map((entry) => ({ ...entry, hours: entry.regularHours + entry.overtimeHours }))
     .filter((entry) => entry.date && entry.employee && entry.project && Number.isFinite(entry.hours));
 }
 
@@ -229,10 +246,38 @@ async function syncBackendState() {
 
 function renderAll() {
   renderSelects();
+  renderDailyProgress();
   renderMetrics();
   renderEntries();
   renderSummary();
   renderMasters();
+}
+
+function renderDailyProgress() {
+  const date = els.entryDate.value;
+  const employee = els.entryEmployee.value;
+  const savedHours = sum(
+    state.entries
+      .filter((entry) => entry.date === date && entry.employee === employee && entry.id !== editingId)
+      .map((entry) => entry.hours)
+  );
+  const draftHours = Number(els.entryRegularHours.value || 0) + Number(els.entryOvertimeHours.value || 0);
+  const total = savedHours + (Number.isFinite(draftHours) ? draftHours : 0);
+  const remaining = Math.max(0, 8 - total);
+
+  els.dailyTotal.textContent = `${formatHours(total)}時間`;
+  els.dailyProgressBar.style.width = `${Math.min(100, (total / 8) * 100)}%`;
+  els.dailyProgress.classList.toggle("warning", total > 8);
+
+  if (!date || !employee) {
+    els.dailyProgressMessage.textContent = "日付と技術者を選択すると、その日の入力状況を確認できます。";
+  } else if (total > 8) {
+    els.dailyProgressMessage.textContent = `8時間を${formatHours(total - 8)}時間超えています。入力内容を確認してください。`;
+  } else if (remaining === 0) {
+    els.dailyProgressMessage.textContent = "8時間分の入力が完了しています。";
+  } else {
+    els.dailyProgressMessage.textContent = `8時間まで残り${formatHours(remaining)}時間です（入力中の時間を含む）。`;
+  }
 }
 
 function renderSelects() {
@@ -260,9 +305,12 @@ function getMonthEntries() {
 function renderMetrics() {
   const entries = getMonthEntries();
   const totalHours = sum(entries.map((entry) => entry.hours));
+  const regularHours = sum(entries.map((entry) => entry.regularHours));
+  const overtimeHours = sum(entries.map((entry) => entry.overtimeHours));
   const activeEmployees = new Set(entries.map((entry) => entry.employee)).size;
 
   els.metricTotalHours.textContent = `${formatHours(totalHours)}h`;
+  els.metricHoursBreakdown.textContent = `定時 ${formatHours(regularHours)}h ／ 残業 ${formatHours(overtimeHours)}h`;
   els.metricEntryCount.textContent = `${entries.length}件`;
   els.metricEmployeeCount.textContent = `${activeEmployees}人`;
 }
@@ -275,7 +323,7 @@ function renderEntries() {
   });
 
   if (!entries.length) {
-    els.entriesTable.innerHTML = `<tr><td class="empty" colspan="5">この月の日報はまだありません。</td></tr>`;
+    els.entriesTable.innerHTML = `<tr><td class="empty" colspan="7">この月の日報はまだありません。</td></tr>`;
     return;
   }
 
@@ -286,7 +334,9 @@ function renderEntries() {
         <td>${escapeHtml(entry.date)}</td>
         <td>${escapeHtml(entry.employee)}</td>
         <td>${escapeHtml(entry.project || "")}</td>
-        <td class="num">${formatHours(entry.hours)}</td>
+        <td class="num regular-hours">${formatHours(entry.regularHours)}</td>
+        <td class="num overtime-hours">${formatHours(entry.overtimeHours)}</td>
+        <td class="num"><strong>${formatHours(entry.hours)}</strong></td>
         <td class="actions-col">
           <div class="row-actions">
             <button class="mini-button" type="button" title="編集" data-edit="${entry.id}">編集</button>
@@ -312,8 +362,10 @@ function editEntry(id) {
   els.entryDate.value = entry.date;
   els.entryEmployee.value = entry.employee;
   els.entryProject.value = entry.project || "";
-  els.entryHours.value = entry.hours;
+  els.entryRegularHours.value = entry.regularHours;
+  els.entryOvertimeHours.value = entry.overtimeHours;
   els.clearEditButton.classList.remove("hidden");
+  renderDailyProgress();
   switchView("entry");
   showToast("編集内容をフォームに読み込みました。");
 }
@@ -337,25 +389,33 @@ function renderSummary() {
   const visibleProjects = projects.length ? projects : ["業務未入力"];
 
   visibleProjects.forEach((project) => {
-    matrix.set(project, new Map(employees.map((employee) => [employee, 0])));
+    matrix.set(project, new Map(employees.map((employee) => [employee, { regular: 0, overtime: 0 }])));
   });
 
   entries.forEach((entry) => {
     if (!matrix.has(entry.project)) {
-      matrix.set(entry.project, new Map(employees.map((employee) => [employee, 0])));
+      matrix.set(entry.project, new Map(employees.map((employee) => [employee, { regular: 0, overtime: 0 }])));
     }
     if (!matrix.get(entry.project).has(entry.employee)) {
-      matrix.get(entry.project).set(entry.employee, 0);
+      matrix.get(entry.project).set(entry.employee, { regular: 0, overtime: 0 });
     }
-    matrix.get(entry.project).set(entry.employee, matrix.get(entry.project).get(entry.employee) + Number(entry.hours || 0));
-    employeeTotals.set(entry.employee, (employeeTotals.get(entry.employee) || 0) + Number(entry.hours || 0));
-    projectTotals.set(entry.project, (projectTotals.get(entry.project) || 0) + Number(entry.hours || 0));
+    const cell = matrix.get(entry.project).get(entry.employee);
+    cell.regular += Number(entry.regularHours || 0);
+    cell.overtime += Number(entry.overtimeHours || 0);
+    const employeeTotal = employeeTotals.get(entry.employee) || { regular: 0, overtime: 0 };
+    employeeTotal.regular += Number(entry.regularHours || 0);
+    employeeTotal.overtime += Number(entry.overtimeHours || 0);
+    employeeTotals.set(entry.employee, employeeTotal);
+    const projectTotal = projectTotals.get(entry.project) || { regular: 0, overtime: 0 };
+    projectTotal.regular += Number(entry.regularHours || 0);
+    projectTotal.overtime += Number(entry.overtimeHours || 0);
+    projectTotals.set(entry.project, projectTotal);
   });
 
   const head = `
     <thead>
       <tr>
-        <th>業務</th>
+        <th>業務</th><th>区分</th>
         ${employees.map((employee) => `<th class="num">${escapeHtml(employee)}</th>`).join("")}
         <th class="num total-col">合計</th>
       </tr>
@@ -364,24 +424,25 @@ function renderSummary() {
   const bodyRows = visibleProjects
     .map((project) => {
       const row = matrix.get(project) || new Map();
-      return `
-        <tr>
-          <td>${escapeHtml(project)}</td>
-          ${employees.map((employee) => `<td class="num">${formatHours(row.get(employee) || 0)}</td>`).join("")}
-          <td class="num total-col">${formatHours(projectTotals.get(project) || 0)}</td>
-        </tr>`;
+      const total = projectTotals.get(project) || { regular: 0, overtime: 0 };
+      return ["regular", "overtime"].map((type, index) => `
+        <tr class="${type}-row">
+          <td>${index === 0 ? escapeHtml(project) : ""}</td><td>${type === "regular" ? "定時" : "残業"}</td>
+          ${employees.map((employee) => `<td class="num">${formatHours((row.get(employee) || {})[type] || 0)}</td>`).join("")}
+          <td class="num total-col">${formatHours(total[type])}</td>
+        </tr>`).join("");
     })
     .join("");
 
-  const totalRow = `
-    <tr class="total-row">
-      <td>合計</td>
-      ${employees.map((employee) => `<td class="num">${formatHours(employeeTotals.get(employee) || 0)}</td>`).join("")}
-      <td class="num">${formatHours(sum(Array.from(projectTotals.values())))}</td>
-    </tr>`;
+  const totalRow = ["regular", "overtime"].map((type, index) => `
+    <tr class="total-row ${type}-row">
+      <td>${index === 0 ? "合計" : ""}</td><td>${type === "regular" ? "定時" : "残業"}</td>
+      ${employees.map((employee) => `<td class="num">${formatHours((employeeTotals.get(employee) || {})[type] || 0)}</td>`).join("")}
+      <td class="num">${formatHours(sum(Array.from(projectTotals.values()).map((value) => value[type])))}</td>
+    </tr>`).join("");
 
   els.summaryTable.innerHTML = `${head}<tbody>${bodyRows}${totalRow}</tbody>`;
-  renderRanking(projectTotals);
+  renderRanking(new Map(Array.from(projectTotals, ([project, value]) => [project, value.regular + value.overtime])));
 }
 
 function renderRanking(projectTotals) {
@@ -470,7 +531,7 @@ function copySummary() {
 
 function downloadCsv() {
   const entries = getMonthEntries();
-  const rows = [["date", "employee", "work", "hours"], ...entries.map(entryToCsvRow)];
+  const rows = [["date", "employee", "work", "regular_hours", "overtime_hours"], ...entries.map(entryToCsvRow)];
   const csv = rows.map((row) => row.map(csvCell).join(",")).join("\r\n");
   downloadText(`日報_${state.selectedMonth}.csv`, `\ufeff${csv}`);
 }
@@ -519,17 +580,19 @@ function deleteAllEntries() {
 }
 
 function entryToCsvRow(entry) {
-  return [entry.date, entry.employee, entry.project || "", formatHours(entry.hours)];
+  return [entry.date, entry.employee, entry.project || "", formatHours(entry.regularHours), formatHours(entry.overtimeHours)];
 }
 
 function csvRowToEntry(row) {
-  const hasOldColumns = row.length >= 5;
+  const hasNewColumns = row.length >= 5;
   return {
     id: crypto.randomUUID(),
     date: row[0],
     employee: row[1],
-    project: hasOldColumns ? row[3] || row[2] || "" : row[2] || "",
-    hours: Number(hasOldColumns ? row[4] : row[3])
+    project: row[2] || "",
+    regularHours: Number(row[3] || 0),
+    overtimeHours: Number(hasNewColumns ? row[4] || 0 : 0),
+    hours: Number(row[3] || 0) + Number(hasNewColumns ? row[4] || 0 : 0)
   };
 }
 
