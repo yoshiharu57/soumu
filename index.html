@@ -95,13 +95,22 @@
             </label>
             <label class="field">
               <span class="field-label">時間</span>
-              <input id="entryHours" class="input" type="number" min="0.5" step="0.5" value="1" required />
+              <input id="entryHours" class="input" type="number" min="0.25" max="24" step="0.25" value="1" required />
             </label>
             <div class="form-actions">
               <button id="clearEditButton" class="button secondary hidden" type="button">編集を解除</button>
               <button class="button primary" type="submit">登録</button>
             </div>
           </form>
+
+          <div id="dailyProgress" class="daily-progress" aria-live="polite">
+            <div>
+              <span class="field-label">選択した技術者の1日合計</span>
+              <strong id="dailyTotal">0.0時間</strong>
+            </div>
+            <div class="progress-track" aria-hidden="true"><span id="dailyProgressBar"></span></div>
+            <p id="dailyProgressMessage">日付と技術者を選択すると、その日の入力状況を確認できます。</p>
+          </div>
 
           <div class="table-toolbar">
             <h3>選択月の日報一覧</h3>

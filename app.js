@@ -16,6 +16,10 @@ const els = {
   entryEmployee: document.querySelector("#entryEmployee"),
   entryProject: document.querySelector("#entryProject"),
   entryHours: document.querySelector("#entryHours"),
+  dailyProgress: document.querySelector("#dailyProgress"),
+  dailyTotal: document.querySelector("#dailyTotal"),
+  dailyProgressBar: document.querySelector("#dailyProgressBar"),
+  dailyProgressMessage: document.querySelector("#dailyProgressMessage"),
   entriesTable: document.querySelector("#entriesTable"),
   entrySearch: document.querySelector("#entrySearch"),
   clearEditButton: document.querySelector("#clearEditButton"),
@@ -111,9 +115,14 @@ function bindEvents() {
     els.entryForm.reset();
     els.entryDate.value = `${state.selectedMonth}-01`;
     els.entryHours.value = 1;
+    renderDailyProgress();
   });
 
   els.entrySearch.addEventListener("input", renderEntries);
+  [els.entryDate, els.entryEmployee, els.entryHours].forEach((control) => {
+    control.addEventListener("input", renderDailyProgress);
+    control.addEventListener("change", renderDailyProgress);
+  });
 
   els.employeeForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -229,10 +238,38 @@ async function syncBackendState() {
 
 function renderAll() {
   renderSelects();
+  renderDailyProgress();
   renderMetrics();
   renderEntries();
   renderSummary();
   renderMasters();
+}
+
+function renderDailyProgress() {
+  const date = els.entryDate.value;
+  const employee = els.entryEmployee.value;
+  const savedHours = sum(
+    state.entries
+      .filter((entry) => entry.date === date && entry.employee === employee && entry.id !== editingId)
+      .map((entry) => entry.hours)
+  );
+  const draftHours = Number(els.entryHours.value || 0);
+  const total = savedHours + (Number.isFinite(draftHours) ? draftHours : 0);
+  const remaining = Math.max(0, 8 - total);
+
+  els.dailyTotal.textContent = `${formatHours(total)}時間`;
+  els.dailyProgressBar.style.width = `${Math.min(100, (total / 8) * 100)}%`;
+  els.dailyProgress.classList.toggle("warning", total > 8);
+
+  if (!date || !employee) {
+    els.dailyProgressMessage.textContent = "日付と技術者を選択すると、その日の入力状況を確認できます。";
+  } else if (total > 8) {
+    els.dailyProgressMessage.textContent = `8時間を${formatHours(total - 8)}時間超えています。入力内容を確認してください。`;
+  } else if (remaining === 0) {
+    els.dailyProgressMessage.textContent = "8時間分の入力が完了しています。";
+  } else {
+    els.dailyProgressMessage.textContent = `8時間まで残り${formatHours(remaining)}時間です（入力中の時間を含む）。`;
+  }
 }
 
 function renderSelects() {
@@ -314,6 +351,7 @@ function editEntry(id) {
   els.entryProject.value = entry.project || "";
   els.entryHours.value = entry.hours;
   els.clearEditButton.classList.remove("hidden");
+  renderDailyProgress();
   switchView("entry");
   showToast("編集内容をフォームに読み込みました。");
 }

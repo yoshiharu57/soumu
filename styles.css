@@ -321,6 +321,55 @@ h3 {
   justify-content: flex-end;
 }
 
+.daily-progress {
+  display: grid;
+  grid-template-columns: minmax(180px, auto) minmax(180px, 1fr) minmax(240px, auto);
+  align-items: center;
+  gap: 16px;
+  margin: -12px 0 26px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--primary);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.daily-progress strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 20px;
+}
+
+.daily-progress p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.daily-progress.warning {
+  border-left-color: var(--warning);
+}
+
+.daily-progress.warning .progress-track span {
+  background: var(--warning);
+}
+
+.progress-track {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e4e9e4;
+}
+
+.progress-track span {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+  transition: width 0.2s ease;
+}
+
 .search-field {
   display: flex;
   align-items: center;
@@ -587,6 +636,10 @@ tbody tr:hover {
 
   .summary-layout,
   .master-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .daily-progress {
     grid-template-columns: 1fr;
   }
 }
