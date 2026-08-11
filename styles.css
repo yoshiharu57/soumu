@@ -220,7 +220,7 @@ h3 {
 
 .stats-band {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 22px;
 }
@@ -319,6 +319,61 @@ h3 {
 .form-actions {
   grid-column: span 6;
   justify-content: flex-end;
+}
+
+.form-help {
+  margin: -18px 0 26px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.daily-progress {
+  display: grid;
+  grid-template-columns: minmax(180px, auto) minmax(180px, 1fr) minmax(240px, auto);
+  align-items: center;
+  gap: 16px;
+  margin: -12px 0 26px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--primary);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.daily-progress strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 20px;
+}
+
+.daily-progress p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.daily-progress.warning {
+  border-left-color: var(--warning);
+}
+
+.daily-progress.warning .progress-track span {
+  background: var(--warning);
+}
+
+.progress-track {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e4e9e4;
+}
+
+.progress-track span {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+  transition: width 0.2s ease;
 }
 
 .search-field {
@@ -424,6 +479,24 @@ tbody tr:hover {
 .summary-table .total-col {
   background: #fff8ee;
   font-weight: 800;
+}
+
+.summary-table .employee-group {
+  border-left: 2px solid var(--line);
+  text-align: center;
+}
+
+.summary-table .summary-subhead th:nth-child(3n + 1),
+.summary-table tbody td:nth-child(3n + 2) {
+  border-left: 2px solid var(--line);
+}
+
+.hours-regular {
+  color: var(--primary-strong);
+}
+
+.hours-overtime {
+  color: var(--warning);
 }
 
 .rank-panel,
@@ -580,6 +653,10 @@ tbody tr:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .stats-band {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .field.wide,
   .form-actions {
     grid-column: span 2;
@@ -587,6 +664,10 @@ tbody tr:hover {
 
   .summary-layout,
   .master-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .daily-progress {
     grid-template-columns: 1fr;
   }
 }
@@ -650,7 +731,7 @@ tbody tr:hover {
   }
 
   .stats-band {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
   }
 
   .metric,

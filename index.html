@@ -63,6 +63,14 @@
             <strong id="metricTotalHours">0.0h</strong>
           </div>
           <div class="metric">
+            <span class="metric-label">月間定時</span>
+            <strong id="metricRegularHours">0.0h</strong>
+          </div>
+          <div class="metric warning">
+            <span class="metric-label">月間残業</span>
+            <strong id="metricOvertimeHours">0.0h</strong>
+          </div>
+          <div class="metric">
             <span class="metric-label">入力済み日報</span>
             <strong id="metricEntryCount">0件</strong>
           </div>
@@ -76,7 +84,7 @@
           <div class="section-heading">
             <div>
               <h3 id="entryHeading">日報を入力</h3>
-              <p>技術者ごとに、日付・業務・時間を登録します。</p>
+              <p>技術者ごとに、日付・業務・定時時間・残業時間を登録します。</p>
             </div>
           </div>
 
@@ -94,14 +102,28 @@
               <select id="entryProject" class="input" required></select>
             </label>
             <label class="field">
-              <span class="field-label">時間</span>
-              <input id="entryHours" class="input" type="number" min="0.5" step="0.5" value="1" required />
+              <span class="field-label">定時（時間）</span>
+              <input id="entryRegularHours" class="input" type="number" min="0" max="24" step="0.25" value="1" aria-describedby="hoursHelp" required />
+            </label>
+            <label class="field">
+              <span class="field-label">残業（時間）</span>
+              <input id="entryOvertimeHours" class="input" type="number" min="0" max="24" step="0.25" value="0" aria-describedby="hoursHelp" required />
             </label>
             <div class="form-actions">
               <button id="clearEditButton" class="button secondary hidden" type="button">編集を解除</button>
               <button class="button primary" type="submit">登録</button>
             </div>
           </form>
+          <p id="hoursHelp" class="form-help">定時・残業のどちらか一方、または両方を15分単位で入力してください。</p>
+
+          <div id="dailyProgress" class="daily-progress" aria-live="polite">
+            <div>
+              <span class="field-label">選択した技術者の1日合計</span>
+              <strong id="dailyTotal">0.0時間</strong>
+            </div>
+            <div class="progress-track" aria-hidden="true"><span id="dailyProgressBar"></span></div>
+            <p id="dailyProgressMessage">日付と技術者を選択すると、その日の入力状況を確認できます。</p>
+          </div>
 
           <div class="table-toolbar">
             <h3>選択月の日報一覧</h3>
@@ -117,7 +139,9 @@
                   <th>日付</th>
                   <th>技術者</th>
                   <th>業務</th>
-                  <th class="num">時間</th>
+                  <th class="num hours-regular">定時</th>
+                  <th class="num hours-overtime">残業</th>
+                  <th class="num">合計</th>
                   <th class="actions-col">操作</th>
                 </tr>
               </thead>
@@ -130,7 +154,7 @@
           <div class="section-heading">
             <div>
               <h3 id="summaryHeading">月次集計</h3>
-              <p>業務別に、各技術者が何時間行ったかを自動集計します。</p>
+              <p>業務別・技術者別に、定時と残業を分けて自動集計します。</p>
             </div>
             <button id="copySummaryButton" class="button secondary" type="button">集計表をコピー</button>
           </div>
@@ -197,13 +221,14 @@
 
           <div class="note-panel">
             <h3>CSV項目</h3>
-            <p>date, employee, work, hours の順で出力します。Excelで開く場合はUTF-8対応のCSVとして読み込んでください。</p>
+            <p>date, employee, work, regularHours, overtimeHours, totalHours の順で出力します。従来の hours 形式も読み込みでき、定時時間として引き継ぎます。</p>
           </div>
         </section>
       </main>
     </div>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="./logic.js"></script>
     <script src="./app.js"></script>
   </body>
 </html>
